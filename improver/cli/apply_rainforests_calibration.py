@@ -15,6 +15,7 @@ def process(
     forecast: cli.inputcube,
     *features: cli.inputcube,
     model_config: cli.inputjson,
+    model_path: cli.inputpath,
     output_thresholds: cli.comma_separated_list_of_float = None,
     output_threshold_config: cli.inputjson = None,
     threshold_units: str = None,
@@ -50,6 +51,8 @@ def process(
             be broadcast along the realization dimension.
         model_config (dict):
             Dictionary containing RainForests model configuration data.
+        model_path (Path)
+            Path to Rainforests model configuration data directory.
         output_thresholds (list):
             List of thresholds at which to evaluate output probabilities.
         output_threshold_config (dict):
@@ -94,7 +97,7 @@ def process(
     else:
         thresholds = [float(x) for x in output_thresholds]
     return ApplyRainForestsCalibration(
-        model_config_dict=model_config, threads=threads, bin_data=bin_data
+        model_config_dict=model_config, model_path=model_path, threads=threads, bin_data=bin_data
     ).process(
         forecast,
         CubeList(features),

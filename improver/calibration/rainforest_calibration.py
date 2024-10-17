@@ -47,6 +47,7 @@ class ApplyRainForestsCalibration(PostProcessingPlugin):
     def __new__(
         cls,
         model_config_dict: Dict[str, Dict[str, Dict[str, str]]],
+        model_path: Path = Path("~/rainforests_treelite"),
         threads: int = 1,
         bin_data: bool = False,
     ):
@@ -56,6 +57,8 @@ class ApplyRainForestsCalibration(PostProcessingPlugin):
         Args:
             model_config_dict:
                 Dictionary containing Rainforests model configuration variables.
+            model_path (Path)
+                Path to Rainforests model configuration data directory.
             threads:
                 Number of threads to use during prediction with tree-model objects.
             bin_data:
@@ -69,16 +72,16 @@ class ApplyRainForestsCalibration(PostProcessingPlugin):
         {
         "24": {
             "0.000010": {
-                "lightgbm_model": "<path_to_lightgbm_model_object>",
-                "treelite_model": "<path_to_treelite_model_object>"
+                "lightgbm_model": "<filename_of_lightgbm_model_object>",
+                "treelite_model": "<filename_of_treelite_model_object>"
             },
             "0.000050": {
-                "lightgbm_model": "<path_to_lightgbm_model_object>",
-                "treelite_model": "<path_to_treelite_model_object>"
+                "lightgbm_model": "<filename_of_lightgbm_model_object>",
+                "treelite_model": "<filename_of_treelite_model_object>"
             },
             "0.000100": {
-                "lightgbm_model": "<path_to_lightgbm_model_object>",
-                "treelite_model": "<path_to_treelite_model_object>"
+                "lightgbm_model": "<filename_of_lightgbm_model_object>",
+                "treelite_model": "<filename_of_treelite_model_object>"
             },
         }
 
@@ -208,7 +211,7 @@ class ApplyRainForestsCalibration(PostProcessingPlugin):
                 )
 
     def _parse_model_config(
-        self, model_config_dict: Dict[str, Dict[str, Dict[str, str]]]
+        self, model_config_dict: Dict[str, Dict[str, Dict[str, str]]], model_path: Path
     ) -> Dict[np.float32, Dict[np.float32, Dict[str, str]]]:
         """Parse the model config dictionary, set self.lead_times and self.model_thresholds,
         and return a sorted version of the config dictionary.
@@ -216,11 +219,19 @@ class ApplyRainForestsCalibration(PostProcessingPlugin):
         Args:
             model_config_dict: Nested dictionary with string keys. Keys of outer level are
             lead times, and keys of inner level are thresholds.
+            model_path (Path):
+                Path to Rainforests model configuration data directory.
 
         Returns:
             Dictionary with the same nested structure as model_config_dict, but
             the lead time and threshold keys now have type np.float.
         """
+
+        # Add model_path to filenames in config dict
+        for lead_time in model_config_dict.keys():
+            for threshold in model_config_dict[lead_time].keys():
+                for key_name in model_config_dict[lead_time][threshold].keys():
+                   model_config_dict[lead_time][threshold][key_name] = str(model_path / model_config_dict[lead_time][threshold][key_name])
 
         sorted_model_config_dict = OrderedDict()
         for key, lead_time_dict in model_config_dict.items():
@@ -248,6 +259,7 @@ class ApplyRainForestsCalibrationLightGBM(ApplyRainForestsCalibration):
     def __new__(
         cls,
         model_config_dict: Dict[str, Dict[str, Dict[str, str]]],
+        model_path: Path = Path("~/rainforests_treelite"),
         threads: int = 1,
         bin_data: bool = False,
     ):
@@ -258,6 +270,7 @@ class ApplyRainForestsCalibrationLightGBM(ApplyRainForestsCalibration):
     def __init__(
         self,
         model_config_dict: Dict[str, Dict[str, Dict[str, str]]],
+        model_path: Path = Path("~/rainforests_treelite"),
         threads: int = 1,
         bin_data: bool = False,
     ):
@@ -267,6 +280,8 @@ class ApplyRainForestsCalibrationLightGBM(ApplyRainForestsCalibration):
         Args:
             model_config_dict:
                 Dictionary containing Rainforests model configuration variables.
+            model_path (Path)
+                Path to Rainforests model configuration data directory.
             threads:
                 Number of threads to use during prediction with tree-model objects.
             bin_data:
@@ -280,16 +295,16 @@ class ApplyRainForestsCalibrationLightGBM(ApplyRainForestsCalibration):
             {
                 "24": {
                     "0.000010": {
-                        "lightgbm_model": "<path_to_lightgbm_model_object>",
-                        "treelite_model": "<path_to_treelite_model_object>"
+                        "lightgbm_model": "<filename_of_lightgbm_model_object>",
+                        "treelite_model": "<filename_of_treelite_model_object>"
                     },
                     "0.000050": {
-                        "lightgbm_model": "<path_to_lightgbm_model_object>",
-                        "treelite_model": "<path_to_treelite_model_object>"
+                        "lightgbm_model": "<filename_of_lightgbm_model_object>",
+                        "treelite_model": "<filename_of_treelite_model_object>"
                     },
                     "0.000100": {
-                        "lightgbm_model": "<path_to_lightgbm_model_object>",
-                        "treelite_model": "<path_to_treelite_model_object>"
+                        "lightgbm_model": "<filename_of_lightgbm_model_object>",
+                        "treelite_model": "<filename_of_treelite_model_object>"
                     },
                 }
             }
@@ -300,7 +315,7 @@ class ApplyRainForestsCalibrationLightGBM(ApplyRainForestsCalibration):
         """
         from lightgbm import Booster
 
-        sorted_model_config_dict = self._parse_model_config(model_config_dict)
+        sorted_model_config_dict = self._parse_model_config(model_config_dict, model_path)
         self.model_input_converter = np.array
         self.tree_models = {}
         for lead_time in self.lead_times:
@@ -777,6 +792,7 @@ class ApplyRainForestsCalibrationTreelite(ApplyRainForestsCalibrationLightGBM):
     def __new__(
         cls,
         model_config_dict: Dict[str, Dict[str, Dict[str, str]]],
+        model_path: Path = Path("~/rainforests_treelite"),
         threads: int = 1,
         bin_data: bool = False,
     ):
@@ -793,6 +809,7 @@ class ApplyRainForestsCalibrationTreelite(ApplyRainForestsCalibrationLightGBM):
     def __init__(
         self,
         model_config_dict: Dict[str, Dict[str, Dict[str, str]]],
+        model_path: Path = Path("~/rainforests_treelite"),
         threads: int = 1,
         bin_data: bool = False,
     ):
@@ -802,6 +819,8 @@ class ApplyRainForestsCalibrationTreelite(ApplyRainForestsCalibrationLightGBM):
         Args:
             model_config_dict:
                 Dictionary containing Rainforests model configuration variables.
+            model_path (Path)
+                Path to Rainforests model configuration data directory.
             threads:
                 Number of threads to use during prediction with tree-model objects.
             bin_data:
@@ -815,26 +834,27 @@ class ApplyRainForestsCalibrationTreelite(ApplyRainForestsCalibrationLightGBM):
             {
                 "24": {
                     "0.000010": {
-                        "lightgbm_model": "<path_to_lightgbm_model_object>",
-                        "treelite_model": "<path_to_treelite_model_object>"
+                        "lightgbm_model": "<filename_of_lightgbm_model_object>",
+                        "treelite_model": "<filename_of_treelite_model_object>"
                     },
                     "0.000050": {
-                        "lightgbm_model": "<path_to_lightgbm_model_object>",
-                        "treelite_model": "<path_to_treelite_model_object>"
+                        "lightgbm_model": "<filename_of_lightgbm_model_object>",
+                        "treelite_model": "<filename_of_treelite_model_object>"
                     },
                     "0.000100": {
-                        "lightgbm_model": "<path_to_lightgbm_model_object>",
-                        "treelite_model": "<path_to_treelite_model_object>"
+                        "lightgbm_model": "<filename_of_lightgbm_model_object>",
+                        "treelite_model": "<filename_of_treelite_model_object>"
                     },
                 }
             }
 
         The keys specify the model threshold value, while the associated values
-        are the path to the corresponding tree-model objects for that threshold.
+        are the filenames of the corresponding tree-model objects for that threshold. The files are expected
+        to be found in model_path.
         """
         from treelite_runtime import DMatrix, Predictor
 
-        sorted_model_config_dict = self._parse_model_config(model_config_dict)
+        sorted_model_config_dict = self._parse_model_config(model_config_dict, model_path)
         self.model_input_converter = DMatrix
         self.tree_models = {}
         for lead_time in self.lead_times:
